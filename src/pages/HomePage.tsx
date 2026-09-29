@@ -1,3 +1,4 @@
+import CardDataStatus from '../components/CardDataStatus'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function HomePage() {
@@ -5,6 +6,7 @@ export default function HomePage() {
 
   return (
     <div className="p-6 space-y-8">
+      <CardDataStatus />
       <section>
         <h2 className="text-xl font-semibold mb-2">조합 보드</h2>
         <p className="text-gray-400 text-sm">추후 구현 예정 (기능 1)</p>
