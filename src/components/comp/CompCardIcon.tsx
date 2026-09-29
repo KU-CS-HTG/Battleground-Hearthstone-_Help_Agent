@@ -1,4 +1,8 @@
+import FitText from '../FitText'
 import type { LibraryCard } from '../../lib/library'
+
+const ICON_WIDTH_PX = 80
+const NAME_MAX_WIDTH_PX = ICON_WIDTH_PX - 8
 
 export default function CompCardIcon({
   card,
@@ -35,6 +39,9 @@ export default function CompCardIcon({
         ) : (
           <div className="aspect-square w-full bg-white/10" />
         )}
+        <div className="px-1 py-0.5 text-gray-300">
+          <FitText text={card.name} maxWidthPx={NAME_MAX_WIDTH_PX} basePx={10} />
+        </div>
       </button>
     </div>
   )
