@@ -32,7 +32,12 @@ export default function CardTile({ card, hasNote, draggable, onClick }: Props) {
     >
       {hasNote && <span className="absolute right-1 top-1 z-10 h-2 w-2 rounded-full bg-yellow-400" />}
       {card.tileUrl ? (
-        <img src={card.tileUrl} alt={card.name} className="aspect-square w-full object-cover" draggable={false} />
+        <img
+          src={card.tileUrl}
+          alt={card.name}
+          className="aspect-square w-full scale-125 object-cover"
+          draggable={false}
+        />
       ) : (
         <div className="aspect-square w-full bg-white/10" />
       )}
