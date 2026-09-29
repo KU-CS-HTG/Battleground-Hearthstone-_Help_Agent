@@ -14,6 +14,7 @@ export interface Buildup {
   id: string
   title: string
   steps: BuildupStep[]
+  board: (string | null)[]
 }
 
 export interface Comp {
@@ -45,7 +46,7 @@ function fromRow(row: CompRow): Comp {
     id: row.id,
     name: row.name,
     races: row.races ?? [],
-    buildups: row.buildups ?? [],
+    buildups: (row.buildups ?? []).map((b) => ({ ...b, steps: b.steps ?? [], board: b.board ?? [] })),
     coreCards: row.core_cards ?? [],
     finalBoard: row.final_board ?? [],
     trinkets: row.trinkets ?? [],

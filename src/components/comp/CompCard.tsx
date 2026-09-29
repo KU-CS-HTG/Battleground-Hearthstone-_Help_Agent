@@ -43,6 +43,12 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
     onPatch({ finalBoard: next })
   }
 
+  function setSlot(index: number, cardId: string) {
+    const next = [...comp.finalBoard]
+    next[index] = cardId
+    onPatch({ finalBoard: next })
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -104,11 +110,12 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
       <div>
         <h4 className="mb-1 text-xs font-semibold text-gray-400">최종 조합</h4>
         <FinalBoardSlots
-          compId={comp.id}
+          zonePrefix={`comp:${comp.id}`}
           slots={comp.finalBoard}
           cardsById={cardsById}
           editable={editable}
           onClear={clearSlot}
+          onSet={setSlot}
           onCardClick={onCardClick}
         />
       </div>
