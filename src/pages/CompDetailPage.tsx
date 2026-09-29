@@ -86,15 +86,34 @@ export default function CompDetailPage() {
     patch({ finalBoard: next })
   }
 
+  function setSlot(index: number, cardId: string) {
+    if (!comp) return
+    const next = [...comp.finalBoard]
+    next[index] = cardId
+    patch({ finalBoard: next })
+  }
+
   function addBuildup() {
     if (!comp) return
-    const buildup: Buildup = { id: crypto.randomUUID(), title: '새 빌드업', steps: [] }
+    const buildup: Buildup = { id: crypto.randomUUID(), title: '새 빌드업', steps: [], board: [] }
     patch({ buildups: [...comp.buildups, buildup] })
   }
 
   function updateBuildup(buildupId: string, next: Partial<Buildup>) {
     if (!comp) return
     patch({ buildups: comp.buildups.map((b) => (b.id === buildupId ? { ...b, ...next } : b)) })
+  }
+
+  function clearBuildupSlot(buildup: Buildup, index: number) {
+    const board = [...buildup.board]
+    board[index] = null
+    updateBuildup(buildup.id, { board })
+  }
+
+  function setBuildupSlot(buildup: Buildup, index: number, cardId: string) {
+    const board = [...buildup.board]
+    board[index] = cardId
+    updateBuildup(buildup.id, { board })
   }
 
   function deleteBuildup(buildupId: string) {
@@ -161,11 +180,12 @@ export default function CompDetailPage() {
         <section>
           <h3 className="mb-1 text-sm font-semibold text-gray-300">최종 조합</h3>
           <FinalBoardSlots
-            compId={comp.id}
+            zonePrefix={`comp:${comp.id}`}
             slots={comp.finalBoard}
             cardsById={cardsById}
             editable={isLoggedIn}
             onClear={clearSlot}
+            onSet={setSlot}
             onCardClick={setSelectedCard}
           />
         </section>
@@ -211,6 +231,17 @@ export default function CompDetailPage() {
                       삭제
                     </button>
                   )}
+                </div>
+                <div className="mb-3">
+                  <FinalBoardSlots
+                    zonePrefix={`buildup:${comp.id}:${buildup.id}`}
+                    slots={buildup.board}
+                    cardsById={cardsById}
+                    editable={isLoggedIn}
+                    onClear={(idx) => clearBuildupSlot(buildup, idx)}
+                    onSet={(idx, cardId) => setBuildupSlot(buildup, idx, cardId)}
+                    onCardClick={setSelectedCard}
+                  />
                 </div>
                 <div className="space-y-2">
                   {buildup.steps.map((step, idx) => (

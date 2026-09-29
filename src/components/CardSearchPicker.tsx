@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useAllCards } from '../hooks/useAllCards'
 
-export default function CardSearchPicker({ onSelect }: { onSelect: (cardId: string) => void }) {
+export default function CardSearchPicker({
+  onSelect,
+  compact = false,
+}: {
+  onSelect: (cardId: string) => void
+  compact?: boolean
+}) {
   const cards = useAllCards()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -16,9 +22,10 @@ export default function CardSearchPicker({ onSelect }: { onSelect: (cardId: stri
     return (
       <button
         onClick={() => setOpen(true)}
+        title="검색으로 추가"
         className="rounded border border-dashed border-white/20 px-2 py-1 text-xs text-gray-400 hover:border-white/40"
       >
-        + 검색으로 추가
+        {compact ? '+' : '+ 검색으로 추가'}
       </button>
     )
   }

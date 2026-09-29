@@ -28,15 +28,14 @@ export default function CardTile({ card, hasNote, draggable, onClick }: Props) {
         opacity: isDragging ? 0.4 : 1,
       }}
       title={card.name}
-      className="relative flex w-20 touch-none flex-col items-center gap-1 rounded border border-white/10 bg-white/5 p-1 text-center hover:border-white/30"
+      className="relative w-24 touch-none overflow-hidden rounded border border-white/10 bg-white/5 hover:border-white/30"
     >
-      {hasNote && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-yellow-400" />}
+      {hasNote && <span className="absolute right-1 top-1 z-10 h-2 w-2 rounded-full bg-yellow-400" />}
       {card.tileUrl ? (
-        <img src={card.tileUrl} alt={card.name} className="h-10 w-full rounded object-cover" draggable={false} />
+        <img src={card.tileUrl} alt={card.name} className="aspect-square w-full object-cover" draggable={false} />
       ) : (
-        <div className="h-10 w-full rounded bg-white/10" />
+        <div className="aspect-square w-full bg-white/10" />
       )}
-      <span className="line-clamp-2 text-[10px] leading-tight text-gray-300">{card.name}</span>
     </button>
   )
 }
