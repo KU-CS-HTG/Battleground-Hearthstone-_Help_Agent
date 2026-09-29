@@ -26,7 +26,12 @@ export default function CompCardIcon({
       )}
       <button onClick={onClick} className="block w-full">
         {card.tileUrl ? (
-          <img src={card.tileUrl} alt={card.name} className="aspect-square w-full object-cover" draggable={false} />
+          <img
+            src={card.tileUrl}
+            alt={card.name}
+            className="aspect-square w-full scale-125 object-cover"
+            draggable={false}
+          />
         ) : (
           <div className="aspect-square w-full bg-white/10" />
         )}
