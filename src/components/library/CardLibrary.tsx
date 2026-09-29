@@ -1,12 +1,5 @@
-import {
-  DndContext,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import { useEffect, useMemo, useState } from 'react'
+import type { DragEndEvent } from '@dnd-kit/core'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import { useAuth } from '../../lib/AuthContext'
 import {
   createGroup,
@@ -19,6 +12,7 @@ import {
   type CardPosition,
 } from '../../lib/cardPositions'
 import { fetchLibraryCards, fetchNotedCardIds, type CardKind, type LibraryCard } from '../../lib/library'
+import { raceLabel } from '../../lib/races'
 import CardDetailContent from './CardDetailContent'
 import CardZone from './CardZone'
 import CustomCardDialog from './CustomCardDialog'
@@ -40,7 +34,15 @@ function groupIdFromZone(zone: string): string | null {
   return zone === 'ungrouped' ? null : zone.replace('group:', '')
 }
 
-export default function CardLibrary() {
+export interface CardLibraryHandle {
+  handleDragEnd: (event: DragEndEvent) => void
+}
+
+function isLibraryZone(id: string) {
+  return id === 'ungrouped' || id.startsWith('group:')
+}
+
+const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, ref) {
   const { isLoggedIn } = useAuth()
   const [cards, setCards] = useState<LibraryCard[]>([])
   const [notedIds, setNotedIds] = useState<Set<string>>(new Set())
@@ -84,11 +86,6 @@ export default function CardLibrary() {
 
   const cardsById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-  )
-
   const races = useMemo(
     () => Array.from(new Set(cards.filter((c) => c.kind === 'minion' && c.race).map((c) => c.race as string))).sort(),
     [cards],
@@ -123,6 +120,7 @@ export default function CardLibrary() {
     const activeId = String(active.id)
     const overId = String(over.id)
     if (activeId === overId) return
+    if (!isLibraryZone(overId) && !positions[overId]) return
 
     const activeCard = cardsById.get(activeId)
     const activePos = positions[activeId]
@@ -186,6 +184,8 @@ export default function CardLibrary() {
     reload()
   }
 
+  useImperativeHandle(ref, () => ({ handleDragEnd }))
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -241,7 +241,7 @@ export default function CardLibrary() {
                   }
                   className={`rounded px-2 py-0.5 text-xs ${raceFilter.includes(r) ? 'bg-green-500/40' : 'bg-white/10 text-gray-400'}`}
                 >
-                  {r}
+                  {raceLabel(r)}
                 </button>
               ))}
             </div>
@@ -249,7 +249,7 @@ export default function CardLibrary() {
         )}
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <>
         <CardZone
           zoneId="ungrouped"
           cards={ungroupedTabCards}
@@ -295,7 +295,7 @@ export default function CardLibrary() {
             + 그룹 추가
           </button>
         )}
-      </DndContext>
+      </>
 
       {selectedCard && (
         <Modal
@@ -313,4 +313,6 @@ export default function CardLibrary() {
       )}
     </div>
   )
-}
+})
+
+export default CardLibrary
