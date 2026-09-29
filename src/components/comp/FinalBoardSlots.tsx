@@ -33,7 +33,7 @@ export default function FinalBoardSlots({
             key={index}
             id={`${zonePrefix}:slot:${index}`}
             disabled={!editable}
-            className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded border border-dashed border-white/20"
+            className="flex min-h-20 w-20 flex-col items-center justify-center gap-1 rounded border border-dashed border-white/20"
           >
             {card ? (
               <CompCardIcon card={card} editable={editable} onClick={() => onCardClick(card)} onRemove={() => onClear(index)} />

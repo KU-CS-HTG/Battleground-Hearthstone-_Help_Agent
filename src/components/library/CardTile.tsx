@@ -1,6 +1,10 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import FitText from '../FitText'
 import type { LibraryCard } from '../../lib/library'
+
+const TILE_WIDTH_PX = 96
+const NAME_MAX_WIDTH_PX = TILE_WIDTH_PX - 8
 
 interface Props {
   card: LibraryCard
@@ -41,6 +45,9 @@ export default function CardTile({ card, hasNote, draggable, onClick }: Props) {
       ) : (
         <div className="aspect-square w-full bg-white/10" />
       )}
+      <div className="px-1 py-0.5 text-gray-300">
+        <FitText text={card.name} maxWidthPx={NAME_MAX_WIDTH_PX} basePx={11} />
+      </div>
     </button>
   )
 }
