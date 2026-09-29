@@ -16,7 +16,7 @@ export default function CompCardIcon({
   onRemove?: () => void
 }) {
   return (
-    <div className="relative w-20 overflow-hidden rounded border border-white/10 bg-white/5" title={card.name}>
+    <div className="relative w-20 rounded border border-white/10 bg-white/5" title={card.name}>
       {editable && onRemove && (
         <button
           onClick={(e) => {
@@ -29,16 +29,18 @@ export default function CompCardIcon({
         </button>
       )}
       <button onClick={onClick} className="block w-full">
-        {card.tileUrl ? (
-          <img
-            src={card.tileUrl}
-            alt={card.name}
-            className="aspect-square w-full scale-125 object-cover"
-            draggable={false}
-          />
-        ) : (
-          <div className="aspect-square w-full bg-white/10" />
-        )}
+        <div className="aspect-square w-full overflow-hidden rounded-t">
+          {card.tileUrl ? (
+            <img
+              src={card.tileUrl}
+              alt={card.name}
+              className="h-full w-full scale-125 object-cover"
+              draggable={false}
+            />
+          ) : (
+            <div className="h-full w-full bg-white/10" />
+          )}
+        </div>
         <div className="px-1 py-0.5 text-gray-300">
           <FitText text={card.name} maxWidthPx={NAME_MAX_WIDTH_PX} basePx={10} />
         </div>
