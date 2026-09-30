@@ -4,7 +4,8 @@ import MarkdownEditor from '../MarkdownEditor'
 import SaveStatusLabel from '../SaveStatusLabel'
 import { fetchCompsUsingCard, type CompRef } from '../../lib/comps'
 import { fetchNote, saveNote } from '../../lib/cardNotes'
-import { saveTechLevelOverride, saveTextOverride } from '../../lib/cardOverrides'
+import { saveImageOverride, saveStatsOverride, saveTechLevelOverride, saveTextOverride } from '../../lib/cardOverrides'
+import { customCardImageUrl, uploadCardImageOverride } from '../../lib/cardImages'
 import { useAutosaveText } from '../../hooks/useAutosaveText'
 import { useAuth } from '../../lib/AuthContext'
 import type { LibraryCard } from '../../lib/library'
@@ -30,6 +31,10 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
   const [imgFailed, setImgFailed] = useState(false)
   const [techLevel, setTechLevel] = useState(card.techLevel)
   const [techLevelStatus, setTechLevelStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [attack, setAttack] = useState(card.attack)
+  const [health, setHealth] = useState(card.health)
+  const [statsStatus, setStatsStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [imageStatus, setImageStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
     setInitialNote(null)
@@ -39,7 +44,11 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
     setImgFailed(false)
     setTechLevel(card.techLevel)
     setTechLevelStatus('idle')
-  }, [card.id, card.renderUrl, card.techLevel])
+    setAttack(card.attack)
+    setHealth(card.health)
+    setStatsStatus('idle')
+    setImageStatus('idle')
+  }, [card.id, card.renderUrl, card.techLevel, card.attack, card.health])
 
   const { value, status, handleChange } = useAutosaveText(initialNote ?? '', (next) => saveNote(card.id, next))
   const textOverride = useAutosaveText(stripCardTags(card.text ?? ''), (next) => saveTextOverride(card.id, next))
@@ -60,12 +69,57 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
       .catch(() => setTechLevelStatus('error'))
   }
 
+  function handleStatsChange(nextAttack: number | null, nextHealth: number | null) {
+    setAttack(nextAttack)
+    setHealth(nextHealth)
+    setStatsStatus('saving')
+    saveStatsOverride(card.id, nextAttack, nextHealth)
+      .then(() => setStatsStatus('saved'))
+      .catch(() => setStatsStatus('error'))
+  }
+
+  async function handleImageChange(file: File) {
+    setImageStatus('saving')
+    try {
+      const path = await uploadCardImageOverride(file, card.id)
+      await saveImageOverride(card.id, path)
+      const url = customCardImageUrl(path)
+      if (url) {
+        setImgSrc(url)
+        setImgFailed(false)
+      }
+      setImageStatus('saved')
+    } catch {
+      setImageStatus('error')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex gap-4">
-        {!imgFailed && (
-          <img src={imgSrc} alt={card.name} className="h-48 w-auto rounded" onError={handleImgError} />
-        )}
+        <div>
+          {!imgFailed && (
+            <img src={imgSrc} alt={card.name} className="h-48 w-auto rounded" onError={handleImgError} />
+          )}
+          {isLoggedIn && !card.isCustom && (
+            <div className="mt-1 flex items-center gap-1">
+              <label className="cursor-pointer text-xs text-blue-400 hover:underline">
+                이미지 변경
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleImageChange(file)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+              <SaveStatusLabel status={imageStatus} />
+            </div>
+          )}
+        </div>
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">{card.name}</h2>
           <div className="flex flex-wrap items-center gap-1 text-xs text-gray-400">
@@ -94,6 +148,35 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
             {card.trinketRank && <span>· {TRINKET_RANK_LABEL[card.trinketRank]} 장신구</span>}
             {card.race && <span>· {raceLabel(card.race)}</span>}
           </div>
+          {card.kind === 'minion' && (
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              {isLoggedIn ? (
+                <>
+                  <span>공격력</span>
+                  <input
+                    type="number"
+                    value={attack ?? ''}
+                    onChange={(e) => handleStatsChange(e.target.value === '' ? null : Number(e.target.value), health)}
+                    className="w-14 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                  />
+                  <span>/ 생명력</span>
+                  <input
+                    type="number"
+                    value={health ?? ''}
+                    onChange={(e) => handleStatsChange(attack, e.target.value === '' ? null : Number(e.target.value))}
+                    className="w-14 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                  />
+                  <SaveStatusLabel status={statsStatus} />
+                </>
+              ) : (
+                (attack != null || health != null) && (
+                  <span>
+                    공격력 {attack ?? '?'} / 생명력 {health ?? '?'}
+                  </span>
+                )
+              )}
+            </div>
+          )}
           {linkToPage && (
             <Link to={`/card/${card.id}`} className="text-xs text-blue-400 hover:underline">
               카드 단독 페이지 열기 →
