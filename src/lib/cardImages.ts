@@ -24,3 +24,14 @@ export async function uploadCustomCardImage(file: File, cardId: string) {
   if (error) throw error
   return path
 }
+
+export function infoPostImageUrl(storagePath: string) {
+  return `${SUPABASE_URL}/storage/v1/object/public/bg-assets/${storagePath}`
+}
+
+export async function uploadInfoPostImage(file: File, postId: string) {
+  const path = `info-posts/${postId}/${crypto.randomUUID()}.jpg`
+  const { error } = await supabase.storage.from('bg-assets').upload(path, file, { upsert: true })
+  if (error) throw error
+  return path
+}
