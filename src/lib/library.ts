@@ -14,6 +14,8 @@ export interface LibraryCard {
   races: string[]
   cost: number | null
   text: string | null
+  attack: number | null
+  health: number | null
   tileUrl: string
   renderUrl: string
   isCustom: boolean
@@ -29,6 +31,7 @@ interface BgCardRow {
   races: string[]
   cost: number | null
   card_text: string | null
+  raw: { attack?: number; health?: number } | null
 }
 
 interface CustomCardRow {
@@ -44,7 +47,7 @@ export async function fetchLibraryCards(): Promise<LibraryCard[]> {
   const [bgRes, customRes, overrides] = await Promise.all([
     supabase
       .from('bg_cards')
-      .select('id,name,kind,tech_level,trinket_rank,race,races,cost,card_text'),
+      .select('id,name,kind,tech_level,trinket_rank,race,races,cost,card_text,raw'),
     supabase.from('custom_cards').select('id,name,kind,tier,race,image_path'),
     fetchOverrides(),
   ])
@@ -54,6 +57,7 @@ export async function fetchLibraryCards(): Promise<LibraryCard[]> {
 
   const bgCards: LibraryCard[] = (bgRes.data as BgCardRow[]).map((row) => {
     const override = overrides.get(row.id)
+    const imageUrl = override?.imagePath ? customCardImageUrl(override.imagePath) : null
     return {
       id: row.id,
       name: row.name,
@@ -64,26 +68,33 @@ export async function fetchLibraryCards(): Promise<LibraryCard[]> {
       races: row.races ?? [],
       cost: row.cost,
       text: override?.cardText ?? row.card_text,
-      tileUrl: bgTileUrl(row.id),
-      renderUrl: bgRenderUrl(row.id),
+      attack: override?.attack ?? row.raw?.attack ?? null,
+      health: override?.health ?? row.raw?.health ?? null,
+      tileUrl: imageUrl ?? bgTileUrl(row.id),
+      renderUrl: imageUrl ?? bgRenderUrl(row.id),
       isCustom: false,
     }
   })
 
-  const customCards: LibraryCard[] = (customRes.data as CustomCardRow[]).map((row) => ({
-    id: row.id,
-    name: row.name,
-    kind: row.kind,
-    techLevel: row.tier,
-    trinketRank: null,
-    race: row.race,
-    races: row.race ? [row.race] : [],
-    cost: null,
-    text: null,
-    tileUrl: customCardImageUrl(row.image_path) ?? '',
-    renderUrl: customCardImageUrl(row.image_path) ?? '',
-    isCustom: true,
-  }))
+  const customCards: LibraryCard[] = (customRes.data as CustomCardRow[]).map((row) => {
+    const override = overrides.get(row.id)
+    return {
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      techLevel: override?.techLevel ?? row.tier,
+      trinketRank: null,
+      race: row.race,
+      races: row.race ? [row.race] : [],
+      cost: null,
+      text: null,
+      attack: override?.attack ?? null,
+      health: override?.health ?? null,
+      tileUrl: customCardImageUrl(row.image_path) ?? '',
+      renderUrl: customCardImageUrl(row.image_path) ?? '',
+      isCustom: true,
+    }
+  })
 
   return [...bgCards, ...customCards]
 }

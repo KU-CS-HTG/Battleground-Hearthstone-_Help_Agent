@@ -35,3 +35,11 @@ export async function uploadInfoPostImage(file: File, postId: string) {
   if (error) throw error
   return path
 }
+
+export async function uploadCardImageOverride(file: File, cardId: string) {
+  const ext = file.name.split('.').pop() ?? 'jpg'
+  const path = `card-overrides/${cardId}.${ext}`
+  const { error } = await supabase.storage.from('bg-assets').upload(path, file, { upsert: true })
+  if (error) throw error
+  return path
+}
