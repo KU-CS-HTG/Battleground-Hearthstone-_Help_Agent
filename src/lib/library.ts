@@ -1,4 +1,5 @@
 import { bgRenderUrl, bgTileUrl, customCardImageUrl } from './cardImages'
+import { fetchOverrides } from './cardOverrides'
 import { supabase } from './supabaseClient'
 
 export type CardKind = 'minion' | 'spell' | 'trinket'
@@ -40,30 +41,34 @@ interface CustomCardRow {
 }
 
 export async function fetchLibraryCards(): Promise<LibraryCard[]> {
-  const [bgRes, customRes] = await Promise.all([
+  const [bgRes, customRes, overrides] = await Promise.all([
     supabase
       .from('bg_cards')
       .select('id,name,kind,tech_level,trinket_rank,race,races,cost,card_text'),
     supabase.from('custom_cards').select('id,name,kind,tier,race,image_path'),
+    fetchOverrides(),
   ])
 
   if (bgRes.error) throw bgRes.error
   if (customRes.error) throw customRes.error
 
-  const bgCards: LibraryCard[] = (bgRes.data as BgCardRow[]).map((row) => ({
-    id: row.id,
-    name: row.name,
-    kind: row.kind,
-    techLevel: row.tech_level,
-    trinketRank: row.trinket_rank,
-    race: row.race,
-    races: row.races ?? [],
-    cost: row.cost,
-    text: row.card_text,
-    tileUrl: bgTileUrl(row.id),
-    renderUrl: bgRenderUrl(row.id),
-    isCustom: false,
-  }))
+  const bgCards: LibraryCard[] = (bgRes.data as BgCardRow[]).map((row) => {
+    const override = overrides.get(row.id)
+    return {
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      techLevel: override?.techLevel ?? row.tech_level,
+      trinketRank: row.trinket_rank,
+      race: row.race,
+      races: row.races ?? [],
+      cost: row.cost,
+      text: override?.cardText ?? row.card_text,
+      tileUrl: bgTileUrl(row.id),
+      renderUrl: bgRenderUrl(row.id),
+      isCustom: false,
+    }
+  })
 
   const customCards: LibraryCard[] = (customRes.data as CustomCardRow[]).map((row) => ({
     id: row.id,

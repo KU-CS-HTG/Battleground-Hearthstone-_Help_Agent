@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import MarkdownEditor from '../MarkdownEditor'
+import SaveStatusLabel from '../SaveStatusLabel'
 import { fetchCompsUsingCard, type CompRef } from '../../lib/comps'
 import { fetchNote, saveNote } from '../../lib/cardNotes'
+import { saveTechLevelOverride, saveTextOverride } from '../../lib/cardOverrides'
 import { useAutosaveText } from '../../hooks/useAutosaveText'
 import { useAuth } from '../../lib/AuthContext'
 import type { LibraryCard } from '../../lib/library'
+import { raceLabel } from '../../lib/races'
 import { stripCardTags } from '../../lib/textFormat'
 
 const KIND_LABEL: Record<LibraryCard['kind'], string> = {
@@ -14,38 +17,83 @@ const KIND_LABEL: Record<LibraryCard['kind'], string> = {
   trinket: '장신구',
 }
 
+const TRINKET_RANK_LABEL: Record<'lesser' | 'greater', string> = {
+  lesser: '하급',
+  greater: '상급',
+}
+
 export default function CardDetailContent({ card, linkToPage = true }: { card: LibraryCard; linkToPage?: boolean }) {
   const { isLoggedIn } = useAuth()
   const [initialNote, setInitialNote] = useState<string | null>(null)
   const [comps, setComps] = useState<CompRef[]>([])
+  const [imgSrc, setImgSrc] = useState(card.renderUrl)
+  const [imgFailed, setImgFailed] = useState(false)
+  const [techLevel, setTechLevel] = useState(card.techLevel)
+  const [techLevelStatus, setTechLevelStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
     setInitialNote(null)
     fetchNote(card.id).then(setInitialNote)
     fetchCompsUsingCard(card.id).then(setComps)
-  }, [card.id])
+    setImgSrc(card.renderUrl)
+    setImgFailed(false)
+    setTechLevel(card.techLevel)
+    setTechLevelStatus('idle')
+  }, [card.id, card.renderUrl, card.techLevel])
 
   const { value, status, handleChange } = useAutosaveText(initialNote ?? '', (next) => saveNote(card.id, next))
+  const textOverride = useAutosaveText(stripCardTags(card.text ?? ''), (next) => saveTextOverride(card.id, next))
+
+  function handleImgError() {
+    if (imgSrc === card.renderUrl && card.tileUrl) {
+      setImgSrc(card.tileUrl)
+    } else {
+      setImgFailed(true)
+    }
+  }
+
+  function handleTechLevelChange(next: number) {
+    setTechLevel(next)
+    setTechLevelStatus('saving')
+    saveTechLevelOverride(card.id, next)
+      .then(() => setTechLevelStatus('saved'))
+      .catch(() => setTechLevelStatus('error'))
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex gap-4">
-        <img
-          src={card.renderUrl}
-          alt={card.name}
-          className="h-48 w-auto rounded"
-          onError={(e) => {
-            e.currentTarget.style.visibility = 'hidden'
-          }}
-        />
+        {!imgFailed && (
+          <img src={imgSrc} alt={card.name} className="h-48 w-auto rounded" onError={handleImgError} />
+        )}
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">{card.name}</h2>
-          <p className="text-xs text-gray-400">
-            {KIND_LABEL[card.kind]}
-            {card.techLevel != null && ` · 선술집 ${card.techLevel}등급`}
-            {card.trinketRank && ` · ${card.trinketRank === 'lesser' ? '약소' : '중요'} 장신구`}
-            {card.race && ` · ${card.race}`}
-          </p>
+          <div className="flex flex-wrap items-center gap-1 text-xs text-gray-400">
+            <span>{KIND_LABEL[card.kind]}</span>
+            {techLevel != null && (
+              <span className="flex items-center gap-1">
+                · 선술집{' '}
+                {isLoggedIn ? (
+                  <select
+                    value={techLevel}
+                    onChange={(e) => handleTechLevelChange(Number(e.target.value))}
+                    className="rounded border border-white/20 bg-black/30 px-1 py-0.5 text-xs"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7].map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {lvl}성
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  `${techLevel}성`
+                )}
+                <SaveStatusLabel status={techLevelStatus} />
+              </span>
+            )}
+            {card.trinketRank && <span>· {TRINKET_RANK_LABEL[card.trinketRank]} 장신구</span>}
+            {card.race && <span>· {raceLabel(card.race)}</span>}
+          </div>
           {linkToPage && (
             <Link to={`/card/${card.id}`} className="text-xs text-blue-400 hover:underline">
               카드 단독 페이지 열기 →
@@ -54,10 +102,23 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
         </div>
       </div>
 
-      {card.text && (
+      {!card.isCustom && (
         <div>
           <h3 className="mb-1 text-sm font-semibold text-gray-300">원문 텍스트</h3>
-          <p className="whitespace-pre-line text-sm text-gray-400">{stripCardTags(card.text)}</p>
+          {isLoggedIn ? (
+            <div>
+              <textarea
+                value={textOverride.value}
+                onChange={(e) => textOverride.handleChange(e.target.value)}
+                placeholder="원문 텍스트가 깨져 있다면 직접 고쳐보세요"
+                rows={3}
+                className="w-full resize-y rounded border border-white/20 bg-black/20 p-2 text-sm text-gray-300"
+              />
+              <SaveStatusLabel status={textOverride.status} />
+            </div>
+          ) : (
+            card.text && <p className="whitespace-pre-line text-sm text-gray-400">{stripCardTags(card.text)}</p>
+          )}
         </div>
       )}
 
