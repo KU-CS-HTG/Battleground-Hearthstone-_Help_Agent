@@ -52,6 +52,7 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
   const [search, setSearch] = useState('')
   const [techLevelFilter, setTechLevelFilter] = useState<number[]>([])
   const [raceFilter, setRaceFilter] = useState<string[]>([])
+  const [trinketRankFilter, setTrinketRankFilter] = useState<('lesser' | 'greater')[]>([])
   const [selectedCard, setSelectedCard] = useState<LibraryCard | null>(null)
   const [showAddCard, setShowAddCard] = useState(false)
 
@@ -105,14 +106,19 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
   const ungroupedTabCards = useMemo(() => {
     return cardsInZone(null, tab).filter((c) => {
       if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false
-      if (tab === 'minion') {
+      if (tab === 'minion' || tab === 'spell') {
         if (techLevelFilter.length > 0 && (c.techLevel == null || !techLevelFilter.includes(c.techLevel))) return false
+      }
+      if (tab === 'minion') {
         if (raceFilter.length > 0 && (!c.race || !raceFilter.includes(c.race))) return false
+      }
+      if (tab === 'trinket') {
+        if (trinketRankFilter.length > 0 && (!c.trinketRank || !trinketRankFilter.includes(c.trinketRank))) return false
       }
       return true
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, positions, tab, search, techLevelFilter, raceFilter])
+  }, [cards, positions, tab, search, techLevelFilter, raceFilter, trinketRankFilter])
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -217,35 +223,48 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
           placeholder="이름 검색"
           className="rounded border border-white/20 bg-black/20 px-2 py-1 text-sm"
         />
+        {(tab === 'minion' || tab === 'spell') && (
+          <div className="flex flex-wrap gap-1">
+            {[1, 2, 3, 4, 5, 6, 7].map((lvl) => (
+              <button
+                key={lvl}
+                onClick={() =>
+                  setTechLevelFilter((prev) => (prev.includes(lvl) ? prev.filter((v) => v !== lvl) : [...prev, lvl]))
+                }
+                className={`rounded px-2 py-0.5 text-xs ${techLevelFilter.includes(lvl) ? 'bg-blue-500/40' : 'bg-white/10 text-gray-400'}`}
+              >
+                {lvl}성
+              </button>
+            ))}
+          </div>
+        )}
         {tab === 'minion' && (
-          <>
-            <div className="flex flex-wrap gap-1">
-              {[1, 2, 3, 4, 5, 6, 7].map((lvl) => (
-                <button
-                  key={lvl}
-                  onClick={() =>
-                    setTechLevelFilter((prev) => (prev.includes(lvl) ? prev.filter((v) => v !== lvl) : [...prev, lvl]))
-                  }
-                  className={`rounded px-2 py-0.5 text-xs ${techLevelFilter.includes(lvl) ? 'bg-blue-500/40' : 'bg-white/10 text-gray-400'}`}
-                >
-                  {lvl}등급
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {races.map((r) => (
-                <button
-                  key={r}
-                  onClick={() =>
-                    setRaceFilter((prev) => (prev.includes(r) ? prev.filter((v) => v !== r) : [...prev, r]))
-                  }
-                  className={`rounded px-2 py-0.5 text-xs ${raceFilter.includes(r) ? 'bg-green-500/40' : 'bg-white/10 text-gray-400'}`}
-                >
-                  {raceLabel(r)}
-                </button>
-              ))}
-            </div>
-          </>
+          <div className="flex flex-wrap gap-1">
+            {races.map((r) => (
+              <button
+                key={r}
+                onClick={() => setRaceFilter((prev) => (prev.includes(r) ? prev.filter((v) => v !== r) : [...prev, r]))}
+                className={`rounded px-2 py-0.5 text-xs ${raceFilter.includes(r) ? 'bg-green-500/40' : 'bg-white/10 text-gray-400'}`}
+              >
+                {raceLabel(r)}
+              </button>
+            ))}
+          </div>
+        )}
+        {tab === 'trinket' && (
+          <div className="flex flex-wrap gap-1">
+            {(['greater', 'lesser'] as const).map((rank) => (
+              <button
+                key={rank}
+                onClick={() =>
+                  setTrinketRankFilter((prev) => (prev.includes(rank) ? prev.filter((v) => v !== rank) : [...prev, rank]))
+                }
+                className={`rounded px-2 py-0.5 text-xs ${trinketRankFilter.includes(rank) ? 'bg-yellow-500/40' : 'bg-white/10 text-gray-400'}`}
+              >
+                {rank === 'greater' ? '상급' : '하급'}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -301,7 +320,7 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
         <Modal
           onClose={() => {
             setSelectedCard(null)
-            fetchNotedCardIds().then(setNotedIds)
+            reload()
           }}
         >
           <CardDetailContent card={selectedCard} />
