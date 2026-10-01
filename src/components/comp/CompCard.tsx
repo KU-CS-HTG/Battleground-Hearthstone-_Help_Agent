@@ -124,7 +124,7 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
         <h4 className="mb-1 text-xs font-semibold text-gray-400">각 보는 방법</h4>
         <BoardNoteList
           zoneKind="scenario"
-          compId={comp.id}
+          ownerId={comp.id}
           items={comp.scenarios}
           cardsById={cardsById}
           editable={editable}

@@ -10,6 +10,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import BackToHomeLink from '../components/BackToHomeLink'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
 import { createPost, deletePost, fetchPosts, reorderPosts, updatePost, type InfoPost } from '../lib/infoPosts'
@@ -47,12 +48,7 @@ function PostRow({
           ⠿
         </span>
       )}
-      <Link
-        to={`/info/${post.id}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex-1 font-medium hover:underline"
-      >
+      <Link to={`/info/${post.id}`} className="flex-1 font-medium hover:underline">
         {post.title}
       </Link>
       <div className="flex flex-wrap gap-1">
@@ -82,7 +78,7 @@ function PostRow({
 }
 
 export default function InfoBoardPage() {
-  usePageTitle('기타 정보')
+  usePageTitle('전장 플레이 가이드')
   const { isLoggedIn } = useAuth()
   const [posts, setPosts] = useState<InfoPost[]>([])
 
@@ -130,8 +126,9 @@ export default function InfoBoardPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-6">
+      <BackToHomeLink />
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">기타 정보</h1>
+        <h1 className="text-2xl font-bold">전장 플레이 가이드</h1>
         {isLoggedIn && (
           <button onClick={handleAdd} className="rounded bg-white/10 px-3 py-1 text-sm hover:bg-white/20">
             + 글 추가

@@ -2,10 +2,11 @@ import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type Dra
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import BackToHomeLink from '../components/BackToHomeLink'
 import Lightbox from '../components/Lightbox'
 import MarkdownEditor from '../components/MarkdownEditor'
 import Modal from '../components/Modal'
-import CardListZone from '../components/comp/CardListZone'
+import BoardNoteList from '../components/comp/BoardNoteList'
 import ImageTile from '../components/info/ImageTile'
 import ImageUploadZone from '../components/info/ImageUploadZone'
 import CardDetailContent from '../components/library/CardDetailContent'
@@ -14,6 +15,7 @@ import { useAllCards } from '../hooks/useAllCards'
 import { useAutosaveText } from '../hooks/useAutosaveText'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { infoPostImageUrl, uploadInfoPostImage } from '../lib/cardImages'
+import type { BoardNote } from '../lib/comps'
 import { compressImage } from '../lib/imageCompression'
 import {
   addImage,
@@ -100,7 +102,8 @@ export default function InfoDetailPage() {
 
   if (notFound) {
     return (
-      <div className="p-6">
+      <div className="space-y-3 p-6">
+        <BackToHomeLink />
         <p className="text-sm text-gray-400">글을 찾을 수 없습니다.</p>
       </div>
     )
@@ -108,7 +111,8 @@ export default function InfoDetailPage() {
 
   if (!post) {
     return (
-      <div className="p-6">
+      <div className="space-y-3 p-6">
+        <BackToHomeLink />
         <p className="text-sm text-gray-500">불러오는 중...</p>
       </div>
     )
@@ -132,16 +136,6 @@ export default function InfoDetailPage() {
     patch({ tags: post.tags.filter((t) => t !== tag) })
   }
 
-  function addAttachedCard(cardId: string) {
-    if (!post || post.attachedCards.includes(cardId)) return
-    patch({ attachedCards: [...post.attachedCards, cardId] })
-  }
-
-  function removeAttachedCard(cardId: string) {
-    if (!post) return
-    patch({ attachedCards: post.attachedCards.filter((c) => c !== cardId) })
-  }
-
   async function handleFiles(files: File[]) {
     if (!id) return
     let nextIndex = images.length
@@ -159,12 +153,17 @@ export default function InfoDetailPage() {
     setImages((prev) => prev.filter((i) => i.id !== image.id))
   }
 
-  function handleCaptionChange(image: InfoPostImage, caption: string) {
+  async function handleCaptionChange(image: InfoPostImage, caption: string) {
     setImages((prev) => prev.map((i) => (i.id === image.id ? { ...i, caption } : i)))
-    updateImageCaption(image.id, caption).catch(() => reloadImages())
+    try {
+      await updateImageCaption(image.id, caption)
+    } catch {
+      await reloadImages()
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!post) return
     const activeId = String(event.active.id)
     const overId = String(event.over?.id ?? '')
     if (!overId) return
@@ -180,16 +179,29 @@ export default function InfoDetailPage() {
       next.splice(newIndex, 0, moved)
       setImages(next)
       reorderImages(next.map((img, idx) => ({ id: img.id, orderIndex: idx }))).catch(() => reloadImages())
-    } else if (overId.startsWith('attach:')) {
-      addAttachedCard(activeId)
-    } else {
-      libraryRef.current?.handleDragEnd(event)
+      return
     }
+
+    const exampleMatch = overId.match(/^example:([^:]+):([^:]+):slot:(\d+)$/)
+    if (exampleMatch) {
+      const [, , exampleId, indexStr] = exampleMatch
+      const nextExamples = post.ingameExamples.map((ex) => {
+        if (ex.id !== exampleId) return ex
+        const board = [...ex.board]
+        board[Number(indexStr)] = activeId
+        return { ...ex, board }
+      })
+      patch({ ingameExamples: nextExamples })
+      return
+    }
+
+    libraryRef.current?.handleDragEnd(event)
   }
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="mx-auto max-w-3xl space-y-6 p-6">
+        <BackToHomeLink />
         {isLoggedIn ? (
           <input
             value={post.title}
@@ -251,16 +263,18 @@ export default function InfoDetailPage() {
         </section>
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold text-gray-300">첨부된 카드</h3>
-          <CardListZone
-            zoneId={`attach:${post.id}`}
-            cardIds={post.attachedCards}
+          <h3 className="mb-1 text-sm font-semibold text-gray-300">인게임 예시</h3>
+          <BoardNoteList
+            zoneKind="example"
+            ownerId={post.id}
+            items={post.ingameExamples}
             cardsById={cardsById}
             editable={isLoggedIn}
-            onAdd={addAttachedCard}
-            onRemove={removeAttachedCard}
+            notesPlaceholder="이 예시 상황에 대해 설명해보세요 (마크다운)"
+            emptyLabel="아직 없습니다."
+            addLabel="+ 추가"
+            onChange={(ingameExamples: BoardNote[]) => patch({ ingameExamples })}
             onCardClick={setSelectedCard}
-            emptyLabel="아래 카드 라이브러리에서 드래그하거나 검색으로 추가하세요."
           />
         </section>
 
