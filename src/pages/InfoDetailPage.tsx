@@ -1,5 +1,5 @@
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import BackToHomeLink from '../components/BackToHomeLink'
@@ -24,6 +24,7 @@ import {
   fetchPost,
   reorderImages,
   updateImageCaption,
+  updateImageSize,
   updatePost,
   type InfoPost,
   type InfoPostImage,
@@ -162,6 +163,11 @@ export default function InfoDetailPage() {
     }
   }
 
+  function handleSizeChange(image: InfoPostImage, width: number, height: number) {
+    setImages((prev) => prev.map((i) => (i.id === image.id ? { ...i, width, height } : i)))
+    updateImageSize(image.id, width, height).catch(() => reloadImages())
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     if (!post) return
     const activeId = String(event.active.id)
@@ -245,14 +251,15 @@ export default function InfoDetailPage() {
         <section>
           <h3 className="mb-1 text-sm font-semibold text-gray-300">이미지</h3>
           {isLoggedIn && <ImageUploadZone onFiles={handleFiles} />}
-          <SortableContext items={images.map((i) => `img:${i.id}`)} strategy={verticalListSortingStrategy}>
-            <div className="mt-2 flex flex-col gap-4">
+          <SortableContext items={images.map((i) => `img:${i.id}`)} strategy={rectSortingStrategy}>
+            <div className="mt-2 flex flex-wrap gap-4">
               {images.map((image) => (
                 <ImageTile
                   key={image.id}
                   image={image}
                   editable={isLoggedIn}
                   onCaptionChange={(caption) => handleCaptionChange(image, caption)}
+                  onSizeChange={(width, height) => handleSizeChange(image, width, height)}
                   onDelete={() => handleDeleteImage(image)}
                   onOpen={() => setLightboxImage(image)}
                 />
