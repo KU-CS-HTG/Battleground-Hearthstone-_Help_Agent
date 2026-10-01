@@ -6,6 +6,7 @@ import { fetchCompsUsingCard, type CompRef } from '../../lib/comps'
 import { fetchNote, saveNote } from '../../lib/cardNotes'
 import { saveImageOverride, saveStatsOverride, saveTechLevelOverride, saveTextOverride } from '../../lib/cardOverrides'
 import { customCardImageUrl, uploadCardImageOverride } from '../../lib/cardImages'
+import { deleteCustomCard } from '../../lib/customCards'
 import { useAutosaveText } from '../../hooks/useAutosaveText'
 import { useAuth } from '../../lib/AuthContext'
 import type { LibraryCard } from '../../lib/library'
@@ -23,7 +24,15 @@ const TRINKET_RANK_LABEL: Record<'lesser' | 'greater', string> = {
   greater: '상급',
 }
 
-export default function CardDetailContent({ card, linkToPage = true }: { card: LibraryCard; linkToPage?: boolean }) {
+export default function CardDetailContent({
+  card,
+  linkToPage = true,
+  onDeleted,
+}: {
+  card: LibraryCard
+  linkToPage?: boolean
+  onDeleted?: () => void
+}) {
   const { isLoggedIn } = useAuth()
   const [initialNote, setInitialNote] = useState<string | null>(null)
   const [comps, setComps] = useState<CompRef[]>([])
@@ -35,6 +44,7 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
   const [health, setHealth] = useState(card.health)
   const [statsStatus, setStatsStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [imageStatus, setImageStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     setInitialNote(null)
@@ -78,6 +88,17 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
       .catch(() => setStatsStatus('error'))
   }
 
+  async function handleDelete() {
+    if (!window.confirm(`"${card.name}" 카드를 삭제할까요?`)) return
+    setIsDeleting(true)
+    try {
+      await deleteCustomCard(card.id)
+      onDeleted?.()
+    } catch {
+      setIsDeleting(false)
+    }
+  }
+
   async function handleImageChange(file: File) {
     setImageStatus('saving')
     try {
@@ -101,7 +122,7 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
           {!imgFailed && (
             <img src={imgSrc} alt={card.name} className="h-48 w-auto rounded" onError={handleImgError} />
           )}
-          {isLoggedIn && !card.isCustom && (
+          {isLoggedIn && (
             <div className="mt-1 flex items-center gap-1">
               <label className="cursor-pointer text-xs text-blue-400 hover:underline">
                 이미지 변경
@@ -182,28 +203,35 @@ export default function CardDetailContent({ card, linkToPage = true }: { card: L
               카드 단독 페이지 열기 →
             </Link>
           )}
+          {isLoggedIn && card.isCustom && onDeleted && (
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="block text-xs text-red-400 hover:underline disabled:opacity-50"
+            >
+              {isDeleting ? '삭제 중...' : '카드 삭제'}
+            </button>
+          )}
         </div>
       </div>
 
-      {!card.isCustom && (
-        <div>
-          <h3 className="mb-1 text-sm font-semibold text-gray-300">원문 텍스트</h3>
-          {isLoggedIn ? (
-            <div>
-              <textarea
-                value={textOverride.value}
-                onChange={(e) => textOverride.handleChange(e.target.value)}
-                placeholder="원문 텍스트가 깨져 있다면 직접 고쳐보세요"
-                rows={3}
-                className="w-full resize-y rounded border border-white/20 bg-black/20 p-2 text-sm text-gray-300"
-              />
-              <SaveStatusLabel status={textOverride.status} />
-            </div>
-          ) : (
-            card.text && <p className="whitespace-pre-line text-sm text-gray-400">{stripCardTags(card.text)}</p>
-          )}
-        </div>
-      )}
+      <div>
+        <h3 className="mb-1 text-sm font-semibold text-gray-300">원문 텍스트</h3>
+        {isLoggedIn ? (
+          <div>
+            <textarea
+              value={textOverride.value}
+              onChange={(e) => textOverride.handleChange(e.target.value)}
+              placeholder="원문 텍스트가 깨져 있다면 직접 고쳐보세요"
+              rows={3}
+              className="w-full resize-y rounded border border-white/20 bg-black/20 p-2 text-sm text-gray-300"
+            />
+            <SaveStatusLabel status={textOverride.status} />
+          </div>
+        ) : (
+          card.text && <p className="whitespace-pre-line text-sm text-gray-400">{stripCardTags(card.text)}</p>
+        )}
+      </div>
 
       <div>
         <h3 className="mb-1 text-sm font-semibold text-gray-300">내 활용법</h3>

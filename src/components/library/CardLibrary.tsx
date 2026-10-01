@@ -12,7 +12,7 @@ import {
   type CardPosition,
 } from '../../lib/cardPositions'
 import { fetchLibraryCards, fetchNotedCardIds, type CardKind, type LibraryCard } from '../../lib/library'
-import { raceLabel } from '../../lib/races'
+import { NO_RACE_FILTER, raceLabel } from '../../lib/races'
 import CardDetailContent from './CardDetailContent'
 import CardZone from './CardZone'
 import CustomCardDialog from './CustomCardDialog'
@@ -87,10 +87,13 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
 
   const cardsById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards])
 
-  const races = useMemo(
-    () => Array.from(new Set(cards.filter((c) => c.kind === 'minion' && c.race).map((c) => c.race as string))).sort(),
-    [cards],
-  )
+  const races = useMemo(() => {
+    const realRaces = Array.from(
+      new Set(cards.filter((c) => c.kind === 'minion' && c.race).map((c) => c.race as string)),
+    ).sort()
+    const hasNoRaceMinion = cards.some((c) => c.kind === 'minion' && !c.race)
+    return hasNoRaceMinion ? [...realRaces, NO_RACE_FILTER] : realRaces
+  }, [cards])
 
   function cardsInZone(groupId: string | null, kindFilter?: CardKind): LibraryCard[] {
     return cards
@@ -110,7 +113,10 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
         if (techLevelFilter.length > 0 && (c.techLevel == null || !techLevelFilter.includes(c.techLevel))) return false
       }
       if (tab === 'minion') {
-        if (raceFilter.length > 0 && (!c.race || !raceFilter.includes(c.race))) return false
+        if (raceFilter.length > 0) {
+          const matches = c.race ? raceFilter.includes(c.race) : raceFilter.includes(NO_RACE_FILTER)
+          if (!matches) return false
+        }
       }
       if (tab === 'trinket') {
         if (trinketRankFilter.length > 0 && (!c.trinketRank || !trinketRankFilter.includes(c.trinketRank))) return false
@@ -246,7 +252,7 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
                 onClick={() => setRaceFilter((prev) => (prev.includes(r) ? prev.filter((v) => v !== r) : [...prev, r]))}
                 className={`rounded px-2 py-0.5 text-xs ${raceFilter.includes(r) ? 'bg-green-500/40' : 'bg-white/10 text-gray-400'}`}
               >
-                {raceLabel(r)}
+                {r === NO_RACE_FILTER ? '무종족' : raceLabel(r)}
               </button>
             ))}
           </div>
@@ -323,7 +329,13 @@ const CardLibrary = forwardRef<CardLibraryHandle>(function CardLibrary(_props, r
             reload()
           }}
         >
-          <CardDetailContent card={selectedCard} />
+          <CardDetailContent
+            card={selectedCard}
+            onDeleted={() => {
+              setSelectedCard(null)
+              reload()
+            }}
+          />
         </Modal>
       )}
 

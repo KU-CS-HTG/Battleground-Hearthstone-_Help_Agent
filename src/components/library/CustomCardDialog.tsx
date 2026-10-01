@@ -3,6 +3,7 @@ import Modal from '../Modal'
 import { createCustomCard, updateCustomCardImage } from '../../lib/customCards'
 import { uploadCustomCardImage } from '../../lib/cardImages'
 import type { CardKind } from '../../lib/library'
+import { RACE_ORDER, raceLabel } from '../../lib/races'
 
 export default function CustomCardDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('')
@@ -75,15 +76,33 @@ export default function CustomCardDialog({ onClose, onCreated }: { onClose: () =
         </div>
         <div>
           <label className="mb-1 block text-gray-400">종족 (선택)</label>
-          <input
+          <select
             value={race}
             onChange={(e) => setRace(e.target.value)}
             className="w-full rounded border border-white/20 bg-black/20 p-2"
-          />
+          >
+            <option value="">없음</option>
+            {RACE_ORDER.filter((r) => r !== 'ALL').map((r) => (
+              <option key={r} value={r}>
+                {raceLabel(r)}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="mb-1 block text-gray-400">이미지 (선택)</label>
-          <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <div className="flex items-center gap-2">
+            <label className="cursor-pointer rounded bg-white/10 px-3 py-1 text-xs hover:bg-white/20">
+              파일 선택
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            {file && <span className="text-xs text-gray-400">{file.name}</span>}
+          </div>
         </div>
         {error && <p className="text-red-400">{error}</p>}
         <button

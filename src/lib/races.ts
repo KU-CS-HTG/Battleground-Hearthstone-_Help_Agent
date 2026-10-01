@@ -18,3 +18,6 @@ export const RACE_ORDER = Object.keys(RACE_LABELS)
 export function raceLabel(race: string) {
   return RACE_LABELS[race] ?? race
 }
+
+/** 종족이 없는 하수인(티투스 리븐데어, 브란 브론즈비어드 등)을 묶어 보기 위한 가상 종족 값. */
+export const NO_RACE_FILTER = '__NONE__'
