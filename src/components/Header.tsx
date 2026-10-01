@@ -8,9 +8,9 @@ export default function Header() {
         전장 도우미
       </Link>
       <nav className="flex items-center gap-4">
-        <a href="/info" target="_blank" rel="noopener noreferrer" className="text-sm hover:underline">
-          기타 정보
-        </a>
+        <Link to="/info" className="text-sm hover:underline">
+          전장 플레이 가이드
+        </Link>
         <LoginControl />
       </nav>
     </header>

@@ -38,7 +38,7 @@ interface CompRow {
   order_index: number
 }
 
-function normalizeBoardNotes(items: BoardNote[] | null | undefined): BoardNote[] {
+export function normalizeBoardNotes(items: BoardNote[] | null | undefined): BoardNote[] {
   return (items ?? []).map((item) => ({
     id: item.id,
     board: item.board ?? [],

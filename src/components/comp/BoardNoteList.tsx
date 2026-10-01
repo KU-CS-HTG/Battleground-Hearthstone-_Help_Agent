@@ -4,7 +4,7 @@ import BoardNoteItem from './BoardNoteItem'
 
 export default function BoardNoteList({
   zoneKind,
-  compId,
+  ownerId,
   items,
   cardsById,
   editable,
@@ -15,7 +15,7 @@ export default function BoardNoteList({
   onCardClick,
 }: {
   zoneKind: string
-  compId: string
+  ownerId: string
   items: BoardNote[]
   cardsById: Map<string, LibraryCard>
   editable: boolean
@@ -48,7 +48,7 @@ export default function BoardNoteList({
       {items.map((item) => (
         <BoardNoteItem
           key={item.id}
-          zonePrefix={`${zoneKind}:${compId}:${item.id}`}
+          zonePrefix={`${zoneKind}:${ownerId}:${item.id}`}
           item={item}
           cardsById={cardsById}
           editable={editable}

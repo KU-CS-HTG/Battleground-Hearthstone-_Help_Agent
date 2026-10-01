@@ -1,5 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import MarkdownEditor from '../MarkdownEditor'
+import { useAutosaveText } from '../../hooks/useAutosaveText'
 import { infoPostImageUrl } from '../../lib/cardImages'
 import type { InfoPostImage } from '../../lib/infoPosts'
 
@@ -12,7 +14,7 @@ export default function ImageTile({
 }: {
   image: InfoPostImage
   editable: boolean
-  onCaptionChange: (caption: string) => void
+  onCaptionChange: (caption: string) => Promise<void> | void
   onDelete: () => void
   onOpen: () => void
 }) {
@@ -21,11 +23,15 @@ export default function ImageTile({
     disabled: !editable,
   })
 
+  const caption = useAutosaveText(image.caption, async (next) => {
+    await onCaptionChange(next)
+  })
+
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      className="relative w-40 touch-none overflow-hidden rounded border border-white/10 bg-white/5"
+      className="relative w-56 touch-none overflow-hidden rounded border border-white/10 bg-white/5"
     >
       {editable && (
         <button
@@ -41,18 +47,18 @@ export default function ImageTile({
         onClick={onOpen}
         className="block w-full cursor-pointer"
       >
-        <img src={infoPostImageUrl(image.storagePath)} alt={image.caption} className="h-32 w-full object-cover" />
+        <img src={infoPostImageUrl(image.storagePath)} alt="" className="h-32 w-full object-cover" />
       </button>
-      {editable ? (
-        <input
-          value={image.caption}
-          onChange={(e) => onCaptionChange(e.target.value)}
-          placeholder="캡션"
-          className="w-full bg-black/30 px-1 py-0.5 text-xs text-gray-300"
+      <div className="p-1">
+        <MarkdownEditor
+          value={caption.value}
+          status={caption.status}
+          onChange={caption.handleChange}
+          readOnly={!editable}
+          placeholder="이미지 설명 (마크다운)"
+          rows={3}
         />
-      ) : (
-        image.caption && <p className="px-1 py-0.5 text-xs text-gray-400">{image.caption}</p>
-      )}
+      </div>
     </div>
   )
 }

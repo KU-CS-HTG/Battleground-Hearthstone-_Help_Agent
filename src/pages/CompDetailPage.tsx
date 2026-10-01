@@ -1,6 +1,7 @@
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import BackToHomeLink from '../components/BackToHomeLink'
 import MarkdownEditor from '../components/MarkdownEditor'
 import Modal from '../components/Modal'
 import BoardNoteList from '../components/comp/BoardNoteList'
@@ -58,7 +59,8 @@ export default function CompDetailPage() {
 
   if (notFound) {
     return (
-      <div className="p-6">
+      <div className="space-y-3 p-6">
+        <BackToHomeLink />
         <p className="text-sm text-gray-400">조합을 찾을 수 없습니다.</p>
       </div>
     )
@@ -66,7 +68,8 @@ export default function CompDetailPage() {
 
   if (!comp) {
     return (
-      <div className="p-6">
+      <div className="space-y-3 p-6">
+        <BackToHomeLink />
         <p className="text-sm text-gray-500">불러오는 중...</p>
       </div>
     )
@@ -157,6 +160,7 @@ export default function CompDetailPage() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="mx-auto max-w-3xl space-y-6 p-6">
+        <BackToHomeLink />
         {isLoggedIn ? (
           <input
             value={comp.name}
@@ -208,7 +212,7 @@ export default function CompDetailPage() {
           <h3 className="mb-1 text-sm font-semibold text-gray-300">각 보는 방법</h3>
           <BoardNoteList
             zoneKind="scenario"
-            compId={comp.id}
+            ownerId={comp.id}
             items={comp.scenarios}
             cardsById={cardsById}
             editable={isLoggedIn}
@@ -247,7 +251,7 @@ export default function CompDetailPage() {
           <h3 className="mb-1 text-sm font-semibold text-gray-300">플레이 팁</h3>
           <BoardNoteList
             zoneKind="playtip"
-            compId={comp.id}
+            ownerId={comp.id}
             items={comp.playTips}
             cardsById={cardsById}
             editable={isLoggedIn}

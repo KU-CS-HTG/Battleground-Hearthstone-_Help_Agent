@@ -1,3 +1,4 @@
+import { normalizeBoardNotes, type BoardNote } from './comps'
 import { supabase } from './supabaseClient'
 
 export interface InfoPost {
@@ -6,6 +7,7 @@ export interface InfoPost {
   descriptionMd: string
   tags: string[]
   attachedCards: string[]
+  ingameExamples: BoardNote[]
   orderIndex: number
 }
 
@@ -17,7 +19,7 @@ export interface InfoPostImage {
   orderIndex: number
 }
 
-const POST_COLUMNS = 'id,title,description_md,tags,attached_cards,order_index'
+const POST_COLUMNS = 'id,title,description_md,tags,attached_cards,ingame_examples,order_index'
 
 interface PostRow {
   id: string
@@ -25,6 +27,7 @@ interface PostRow {
   description_md: string
   tags: string[]
   attached_cards: string[]
+  ingame_examples: BoardNote[]
   order_index: number
 }
 
@@ -35,6 +38,7 @@ function fromPostRow(row: PostRow): InfoPost {
     descriptionMd: row.description_md ?? '',
     tags: row.tags ?? [],
     attachedCards: row.attached_cards ?? [],
+    ingameExamples: normalizeBoardNotes(row.ingame_examples),
     orderIndex: row.order_index,
   }
 }
@@ -54,7 +58,14 @@ export async function fetchPost(id: string): Promise<InfoPost | null> {
 export async function createPost(orderIndex: number): Promise<InfoPost> {
   const { data, error } = await supabase
     .from('info_posts')
-    .insert({ title: '새 글', description_md: '', tags: [], attached_cards: [], order_index: orderIndex })
+    .insert({
+      title: '새 글',
+      description_md: '',
+      tags: [],
+      attached_cards: [],
+      ingame_examples: [],
+      order_index: orderIndex,
+    })
     .select(POST_COLUMNS)
     .single()
   if (error) throw error
@@ -66,6 +77,7 @@ export interface PostPatch {
   descriptionMd?: string
   tags?: string[]
   attachedCards?: string[]
+  ingameExamples?: BoardNote[]
 }
 
 export async function updatePost(id: string, patch: PostPatch) {
@@ -74,6 +86,7 @@ export async function updatePost(id: string, patch: PostPatch) {
   if (patch.descriptionMd !== undefined) row.description_md = patch.descriptionMd
   if (patch.tags !== undefined) row.tags = patch.tags
   if (patch.attachedCards !== undefined) row.attached_cards = patch.attachedCards
+  if (patch.ingameExamples !== undefined) row.ingame_examples = patch.ingameExamples
   const { error } = await supabase.from('info_posts').update(row).eq('id', id)
   if (error) throw error
 }
