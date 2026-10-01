@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import MarkdownEditor from '../MarkdownEditor'
 import { useAutosaveText } from '../../hooks/useAutosaveText'
@@ -24,6 +25,7 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
     id: `compcard:${comp.id}`,
     disabled: !editable,
   })
+  const [collapsed, setCollapsed] = useState(false)
 
   const finalBoardNotes = useAutosaveText(comp.finalBoardNotesMd, async (next) => onPatch({ finalBoardNotesMd: next }))
 
@@ -61,6 +63,20 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
               ⠿
             </span>
           )}
+          <button
+            onClick={() => setCollapsed((prev) => !prev)}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-white/10 hover:text-white"
+            aria-label={collapsed ? '펼치기' : '접기'}
+            title={collapsed ? '펼치기' : '접기'}
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              className={`h-4 w-4 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}
+            >
+              <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <Link to={`/comp/${comp.id}`} className="text-lg font-semibold hover:underline">
             {comp.name}
           </Link>
@@ -83,58 +99,62 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
         )}
       </div>
 
-      <div className="flex flex-wrap gap-1">
-        {RACE_ORDER.map((race) => (
-          <button
-            key={race}
-            disabled={!editable}
-            onClick={() => toggleRace(race)}
-            className={`rounded px-2 py-0.5 text-xs ${
-              comp.races.includes(race) ? 'bg-purple-500/40' : 'bg-white/10 text-gray-500'
-            } ${editable ? '' : 'cursor-default'}`}
-          >
-            {raceLabel(race)}
-          </button>
-        ))}
-      </div>
+      {!collapsed && (
+        <>
+          <div className="flex flex-wrap gap-1">
+            {RACE_ORDER.map((race) => (
+              <button
+                key={race}
+                disabled={!editable}
+                onClick={() => toggleRace(race)}
+                className={`rounded px-2 py-0.5 text-xs ${
+                  comp.races.includes(race) ? 'bg-purple-500/40' : 'bg-white/10 text-gray-500'
+                } ${editable ? '' : 'cursor-default'}`}
+              >
+                {raceLabel(race)}
+              </button>
+            ))}
+          </div>
 
-      <div>
-        <h4 className="mb-1 text-xs font-semibold text-gray-400">최종 조합</h4>
-        <FinalBoardSlots
-          zonePrefix={`comp:${comp.id}`}
-          slots={comp.finalBoard}
-          cardsById={cardsById}
-          editable={editable}
-          onClear={clearSlot}
-          onSet={setSlot}
-          onCardClick={onCardClick}
-        />
-        <div className="mt-2">
-          <MarkdownEditor
-            value={finalBoardNotes.value}
-            status={finalBoardNotes.status}
-            onChange={finalBoardNotes.handleChange}
-            readOnly={!editable}
-            placeholder="이 조합에 대한 메모를 남겨보세요 (마크다운)"
-          />
-        </div>
-      </div>
+          <div>
+            <h4 className="mb-1 text-xs font-semibold text-gray-400">최종 조합</h4>
+            <FinalBoardSlots
+              zonePrefix={`comp:${comp.id}`}
+              slots={comp.finalBoard}
+              cardsById={cardsById}
+              editable={editable}
+              onClear={clearSlot}
+              onSet={setSlot}
+              onCardClick={onCardClick}
+            />
+            <div className="mt-2">
+              <MarkdownEditor
+                value={finalBoardNotes.value}
+                status={finalBoardNotes.status}
+                onChange={finalBoardNotes.handleChange}
+                readOnly={!editable}
+                placeholder="이 조합에 대한 메모를 남겨보세요 (마크다운)"
+              />
+            </div>
+          </div>
 
-      <div>
-        <h4 className="mb-1 text-xs font-semibold text-gray-400">각 보는 방법</h4>
-        <BoardNoteList
-          zoneKind="scenario"
-          ownerId={comp.id}
-          items={comp.scenarios}
-          cardsById={cardsById}
-          editable={editable}
-          notesPlaceholder="어떤 상황에 이 덱을 가면 좋은지 적어보세요 (마크다운)"
-          emptyLabel="아직 없습니다."
-          addLabel="+ 추가"
-          onChange={handleScenariosChange}
-          onCardClick={onCardClick}
-        />
-      </div>
+          <div>
+            <h4 className="mb-1 text-xs font-semibold text-gray-400">각 보는 방법</h4>
+            <BoardNoteList
+              zoneKind="scenario"
+              ownerId={comp.id}
+              items={comp.scenarios}
+              cardsById={cardsById}
+              editable={editable}
+              notesPlaceholder="어떤 상황에 이 덱을 가면 좋은지 적어보세요 (마크다운)"
+              emptyLabel="아직 없습니다."
+              addLabel="+ 추가"
+              onChange={handleScenariosChange}
+              onCardClick={onCardClick}
+            />
+          </div>
+        </>
+      )}
     </div>
   )
 }

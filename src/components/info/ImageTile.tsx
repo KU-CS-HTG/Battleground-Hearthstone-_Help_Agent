@@ -31,7 +31,7 @@ export default function ImageTile({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      className="relative w-56 touch-none overflow-hidden rounded border border-white/10 bg-white/5"
+      className="relative w-full touch-none overflow-hidden rounded border border-white/10 bg-white/5"
     >
       {editable && (
         <button
@@ -47,7 +47,7 @@ export default function ImageTile({
         onClick={onOpen}
         className="block w-full cursor-pointer"
       >
-        <img src={infoPostImageUrl(image.storagePath)} alt="" className="h-32 w-full object-cover" />
+        <img src={infoPostImageUrl(image.storagePath)} alt="" className="h-auto w-full" />
       </button>
       <div className="p-1">
         <MarkdownEditor
