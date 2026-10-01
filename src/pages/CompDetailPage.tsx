@@ -1,16 +1,18 @@
-import { DndContext } from '@dnd-kit/core'
-import { useEffect, useMemo, useState } from 'react'
+import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import MarkdownEditor from '../components/MarkdownEditor'
 import Modal from '../components/Modal'
+import BoardNoteList from '../components/comp/BoardNoteList'
 import CardListZone from '../components/comp/CardListZone'
 import FinalBoardSlots from '../components/comp/FinalBoardSlots'
 import CardDetailContent from '../components/library/CardDetailContent'
+import CardLibrary, { type CardLibraryHandle } from '../components/library/CardLibrary'
 import { useAllCards } from '../hooks/useAllCards'
 import { useAutosaveText } from '../hooks/useAutosaveText'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth } from '../lib/AuthContext'
-import { fetchComp, updateComp, type Buildup, type Comp } from '../lib/comps'
+import { fetchComp, updateComp, type BoardNote, type Comp } from '../lib/comps'
 import type { LibraryCard } from '../lib/library'
 import { RACE_ORDER, raceLabel } from '../lib/races'
 
@@ -20,8 +22,20 @@ export default function CompDetailPage() {
   const [comp, setComp] = useState<Comp | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [selectedCard, setSelectedCard] = useState<LibraryCard | null>(null)
+  const libraryRef = useRef<CardLibraryHandle>(null)
   const cards = useAllCards()
   const cardsById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  )
+
+  async function reloadComp() {
+    if (!id) return
+    const p = await fetchComp(id)
+    if (p) setComp(p)
+  }
 
   useEffect(() => {
     if (!id) return
@@ -35,8 +49,11 @@ export default function CompDetailPage() {
 
   usePageTitle(comp ? comp.name : '조합 상세')
 
-  const notes = useAutosaveText(comp?.notesMd ?? '', async (next) => {
-    if (comp) await updateComp(comp.id, { notesMd: next })
+  const finalBoardNotes = useAutosaveText(comp?.finalBoardNotesMd ?? '', async (next) => {
+    if (comp) await updateComp(comp.id, { finalBoardNotesMd: next })
+  })
+  const trinketsNotes = useAutosaveText(comp?.trinketsNotesMd ?? '', async (next) => {
+    if (comp) await updateComp(comp.id, { trinketsNotesMd: next })
   })
 
   if (notFound) {
@@ -58,9 +75,7 @@ export default function CompDetailPage() {
   function patch(next: Partial<Comp>) {
     if (!comp) return
     setComp({ ...comp, ...next })
-    updateComp(comp.id, next).catch(() => {
-      if (id) fetchComp(id).then((c) => c && setComp(c))
-    })
+    updateComp(comp.id, next).catch(() => reloadComp())
   }
 
   function toggleRace(race: string) {
@@ -69,14 +84,14 @@ export default function CompDetailPage() {
     patch({ races: next })
   }
 
-  function addCard(field: 'coreCards' | 'trinkets', cardId: string) {
-    if (!comp || comp[field].includes(cardId)) return
-    patch({ [field]: [...comp[field], cardId] })
+  function addTrinket(cardId: string) {
+    if (!comp || comp.trinkets.includes(cardId)) return
+    patch({ trinkets: [...comp.trinkets, cardId] })
   }
 
-  function removeCard(field: 'coreCards' | 'trinkets', cardId: string) {
+  function removeTrinket(cardId: string) {
     if (!comp) return
-    patch({ [field]: comp[field].filter((c) => c !== cardId) })
+    patch({ trinkets: comp.trinkets.filter((c) => c !== cardId) })
   }
 
   function clearSlot(index: number) {
@@ -93,50 +108,54 @@ export default function CompDetailPage() {
     patch({ finalBoard: next })
   }
 
-  function addBuildup() {
+  function handleDragEnd(event: DragEndEvent) {
     if (!comp) return
-    const buildup: Buildup = { id: crypto.randomUUID(), title: '새 빌드업', steps: [], board: [] }
-    patch({ buildups: [...comp.buildups, buildup] })
-  }
+    const activeId = String(event.active.id)
+    const overId = String(event.over?.id ?? '')
+    if (!overId) return
 
-  function updateBuildup(buildupId: string, next: Partial<Buildup>) {
-    if (!comp) return
-    patch({ buildups: comp.buildups.map((b) => (b.id === buildupId ? { ...b, ...next } : b)) })
-  }
+    const compMatch = overId.match(/^comp:([^:]+):(trinket|slot):?(\d+)?$/)
+    if (compMatch) {
+      const [, , field, indexStr] = compMatch
+      if (field === 'trinket') {
+        addTrinket(activeId)
+      } else if (field === 'slot' && indexStr !== undefined) {
+        setSlot(Number(indexStr), activeId)
+      }
+      return
+    }
 
-  function clearBuildupSlot(buildup: Buildup, index: number) {
-    const board = [...buildup.board]
-    board[index] = null
-    updateBuildup(buildup.id, { board })
-  }
+    const scenarioMatch = overId.match(/^scenario:([^:]+):([^:]+):slot:(\d+)$/)
+    if (scenarioMatch) {
+      const [, , scenarioId, indexStr] = scenarioMatch
+      const nextScenarios = comp.scenarios.map((s) => {
+        if (s.id !== scenarioId) return s
+        const board = [...s.board]
+        board[Number(indexStr)] = activeId
+        return { ...s, board }
+      })
+      patch({ scenarios: nextScenarios })
+      return
+    }
 
-  function setBuildupSlot(buildup: Buildup, index: number, cardId: string) {
-    const board = [...buildup.board]
-    board[index] = cardId
-    updateBuildup(buildup.id, { board })
-  }
+    const playTipMatch = overId.match(/^playtip:([^:]+):([^:]+):slot:(\d+)$/)
+    if (playTipMatch) {
+      const [, , tipId, indexStr] = playTipMatch
+      const nextTips = comp.playTips.map((t) => {
+        if (t.id !== tipId) return t
+        const board = [...t.board]
+        board[Number(indexStr)] = activeId
+        return { ...t, board }
+      })
+      patch({ playTips: nextTips })
+      return
+    }
 
-  function deleteBuildup(buildupId: string) {
-    if (!comp) return
-    if (!window.confirm('이 빌드업을 삭제할까요?')) return
-    patch({ buildups: comp.buildups.filter((b) => b.id !== buildupId) })
-  }
-
-  function addStep(buildup: Buildup) {
-    updateBuildup(buildup.id, { steps: [...buildup.steps, { label: '', description: '' }] })
-  }
-
-  function updateStep(buildup: Buildup, index: number, field: 'label' | 'description', value: string) {
-    const steps = buildup.steps.map((s, i) => (i === index ? { ...s, [field]: value } : s))
-    updateBuildup(buildup.id, { steps })
-  }
-
-  function deleteStep(buildup: Buildup, index: number) {
-    updateBuildup(buildup.id, { steps: buildup.steps.filter((_, i) => i !== index) })
+    libraryRef.current?.handleDragEnd(event)
   }
 
   return (
-    <DndContext onDragEnd={() => {}}>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="mx-auto max-w-3xl space-y-6 p-6">
         {isLoggedIn ? (
           <input
@@ -164,20 +183,6 @@ export default function CompDetailPage() {
         </div>
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold text-gray-300">핵심 기물</h3>
-          <CardListZone
-            zoneId={`comp:${comp.id}:core`}
-            cardIds={comp.coreCards}
-            cardsById={cardsById}
-            editable={isLoggedIn}
-            onAdd={(cid) => addCard('coreCards', cid)}
-            onRemove={(cid) => removeCard('coreCards', cid)}
-            onCardClick={setSelectedCard}
-            emptyLabel="검색으로 추가하세요."
-          />
-        </section>
-
-        <section>
           <h3 className="mb-1 text-sm font-semibold text-gray-300">최종 조합</h3>
           <FinalBoardSlots
             zonePrefix={`comp:${comp.id}`}
@@ -186,6 +191,31 @@ export default function CompDetailPage() {
             editable={isLoggedIn}
             onClear={clearSlot}
             onSet={setSlot}
+            onCardClick={setSelectedCard}
+          />
+          <div className="mt-2">
+            <MarkdownEditor
+              value={finalBoardNotes.value}
+              status={finalBoardNotes.status}
+              onChange={finalBoardNotes.handleChange}
+              readOnly={!isLoggedIn}
+              placeholder="이 조합에 대한 메모를 남겨보세요 (마크다운)"
+            />
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-1 text-sm font-semibold text-gray-300">각 보는 방법</h3>
+          <BoardNoteList
+            zoneKind="scenario"
+            compId={comp.id}
+            items={comp.scenarios}
+            cardsById={cardsById}
+            editable={isLoggedIn}
+            notesPlaceholder="어떤 상황에 이 덱을 가면 좋은지 적어보세요 (마크다운)"
+            emptyLabel="아직 없습니다."
+            addLabel="+ 추가"
+            onChange={(scenarios) => patch({ scenarios })}
             onCardClick={setSelectedCard}
           />
         </section>
@@ -197,101 +227,41 @@ export default function CompDetailPage() {
             cardIds={comp.trinkets}
             cardsById={cardsById}
             editable={isLoggedIn}
-            onAdd={(cid) => addCard('trinkets', cid)}
-            onRemove={(cid) => removeCard('trinkets', cid)}
+            onAdd={addTrinket}
+            onRemove={removeTrinket}
             onCardClick={setSelectedCard}
-            emptyLabel="검색으로 추가하세요."
+            emptyLabel="아래 카드 라이브러리에서 드래그하거나 검색으로 추가하세요."
           />
-        </section>
-
-        <section>
-          <div className="mb-1 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-300">빌드업 예시</h3>
-            {isLoggedIn && (
-              <button onClick={addBuildup} className="text-xs text-blue-400 hover:underline">
-                + 빌드업 추가
-              </button>
-            )}
-          </div>
-          <div className="space-y-3">
-            {comp.buildups.map((buildup) => (
-              <div key={buildup.id} className="rounded border border-white/10 p-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  {isLoggedIn ? (
-                    <input
-                      value={buildup.title}
-                      onChange={(e) => updateBuildup(buildup.id, { title: e.target.value })}
-                      className="flex-1 rounded border border-white/20 bg-black/20 px-2 py-1 text-sm font-semibold"
-                    />
-                  ) : (
-                    <h4 className="text-sm font-semibold">{buildup.title}</h4>
-                  )}
-                  {isLoggedIn && (
-                    <button onClick={() => deleteBuildup(buildup.id)} className="text-xs text-red-400 hover:underline">
-                      삭제
-                    </button>
-                  )}
-                </div>
-                <div className="mb-3">
-                  <FinalBoardSlots
-                    zonePrefix={`buildup:${comp.id}:${buildup.id}`}
-                    slots={buildup.board}
-                    cardsById={cardsById}
-                    editable={isLoggedIn}
-                    onClear={(idx) => clearBuildupSlot(buildup, idx)}
-                    onSet={(idx, cardId) => setBuildupSlot(buildup, idx, cardId)}
-                    onCardClick={setSelectedCard}
-                  />
-                </div>
-                <div className="space-y-2">
-                  {buildup.steps.map((step, idx) => (
-                    <div key={idx} className="flex gap-2 text-sm">
-                      {isLoggedIn ? (
-                        <>
-                          <input
-                            value={step.label}
-                            onChange={(e) => updateStep(buildup, idx, 'label', e.target.value)}
-                            placeholder="턴/등급"
-                            className="w-24 rounded border border-white/20 bg-black/20 px-2 py-1"
-                          />
-                          <input
-                            value={step.description}
-                            onChange={(e) => updateStep(buildup, idx, 'description', e.target.value)}
-                            placeholder="설명"
-                            className="flex-1 rounded border border-white/20 bg-black/20 px-2 py-1"
-                          />
-                          <button onClick={() => deleteStep(buildup, idx)} className="text-xs text-red-400">
-                            ✕
-                          </button>
-                        </>
-                      ) : (
-                        <p>
-                          <span className="font-semibold text-gray-400">{step.label}</span> {step.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                  {isLoggedIn && (
-                    <button onClick={() => addStep(buildup)} className="text-xs text-blue-400 hover:underline">
-                      + 단계 추가
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-            {comp.buildups.length === 0 && <p className="text-xs text-gray-500">아직 빌드업이 없습니다.</p>}
+          <div className="mt-2">
+            <MarkdownEditor
+              value={trinketsNotes.value}
+              status={trinketsNotes.status}
+              onChange={trinketsNotes.handleChange}
+              readOnly={!isLoggedIn}
+              placeholder="장신구 선택 기준 등을 적어보세요 (마크다운)"
+            />
           </div>
         </section>
 
         <section>
-          <h3 className="mb-1 text-sm font-semibold text-gray-300">자유 메모</h3>
-          <MarkdownEditor
-            value={notes.value}
-            status={notes.status}
-            onChange={notes.handleChange}
-            readOnly={!isLoggedIn}
-            placeholder="자유롭게 메모를 남겨보세요 (마크다운)"
+          <h3 className="mb-1 text-sm font-semibold text-gray-300">플레이 팁</h3>
+          <BoardNoteList
+            zoneKind="playtip"
+            compId={comp.id}
+            items={comp.playTips}
+            cardsById={cardsById}
+            editable={isLoggedIn}
+            notesPlaceholder="이 하수인/선술집 주문/장신구를 어떻게 활용해야 하는지 적어보세요 (마크다운)"
+            emptyLabel="아직 없습니다."
+            addLabel="+ 추가"
+            onChange={(playTips: BoardNote[]) => patch({ playTips })}
+            onCardClick={setSelectedCard}
           />
+        </section>
+
+        <section>
+          <h3 className="mb-2 text-lg font-semibold">카드 라이브러리</h3>
+          <CardLibrary ref={libraryRef} />
         </section>
 
         {selectedCard && (

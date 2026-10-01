@@ -36,7 +36,7 @@ const CompBoard = forwardRef<CompBoardHandle>(function CompBoard(_props, ref) {
   }
 
   useEffect(() => {
-    reload()
+    reload().catch(() => {})
   }, [])
 
   const filtered = useMemo(() => {
@@ -88,22 +88,35 @@ const CompBoard = forwardRef<CompBoardHandle>(function CompBoard(_props, ref) {
       if (!over) return
       const cardId = String(active.id)
       const overId = String(over.id)
-      const match = overId.match(/^comp:([^:]+):(core|trinket|slot):?(\d+)?$/)
-      if (!match) return
-      const [, compId, field, indexStr] = match
-      const comp = comps.find((c) => c.id === compId)
-      if (!comp) return
 
-      if (field === 'core') {
-        if (comp.coreCards.includes(cardId)) return
-        handlePatch(comp, { coreCards: [...comp.coreCards, cardId] })
-      } else if (field === 'trinket') {
-        if (comp.trinkets.includes(cardId)) return
-        handlePatch(comp, { trinkets: [...comp.trinkets, cardId] })
-      } else if (field === 'slot' && indexStr !== undefined) {
-        const next = [...comp.finalBoard]
-        next[Number(indexStr)] = cardId
-        handlePatch(comp, { finalBoard: next })
+      const compMatch = overId.match(/^comp:([^:]+):(trinket|slot):?(\d+)?$/)
+      if (compMatch) {
+        const [, compId, field, indexStr] = compMatch
+        const comp = comps.find((c) => c.id === compId)
+        if (!comp) return
+        if (field === 'trinket') {
+          if (comp.trinkets.includes(cardId)) return
+          handlePatch(comp, { trinkets: [...comp.trinkets, cardId] })
+        } else if (field === 'slot' && indexStr !== undefined) {
+          const next = [...comp.finalBoard]
+          next[Number(indexStr)] = cardId
+          handlePatch(comp, { finalBoard: next })
+        }
+        return
+      }
+
+      const scenarioMatch = overId.match(/^scenario:([^:]+):([^:]+):slot:(\d+)$/)
+      if (scenarioMatch) {
+        const [, compId, scenarioId, indexStr] = scenarioMatch
+        const comp = comps.find((c) => c.id === compId)
+        if (!comp) return
+        const nextScenarios = comp.scenarios.map((s) => {
+          if (s.id !== scenarioId) return s
+          const board = [...s.board]
+          board[Number(indexStr)] = cardId
+          return { ...s, board }
+        })
+        handlePatch(comp, { scenarios: nextScenarios })
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
