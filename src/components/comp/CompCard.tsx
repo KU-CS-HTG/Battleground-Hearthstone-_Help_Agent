@@ -1,10 +1,12 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from 'react-router-dom'
+import MarkdownEditor from '../MarkdownEditor'
+import { useAutosaveText } from '../../hooks/useAutosaveText'
 import type { LibraryCard } from '../../lib/library'
-import type { Comp } from '../../lib/comps'
+import type { BoardNote, Comp } from '../../lib/comps'
 import { RACE_ORDER, raceLabel } from '../../lib/races'
-import CardListZone from './CardListZone'
+import BoardNoteList from './BoardNoteList'
 import FinalBoardSlots from './FinalBoardSlots'
 
 interface Props {
@@ -23,18 +25,11 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
     disabled: !editable,
   })
 
+  const finalBoardNotes = useAutosaveText(comp.finalBoardNotesMd, async (next) => onPatch({ finalBoardNotesMd: next }))
+
   function toggleRace(race: string) {
     const next = comp.races.includes(race) ? comp.races.filter((r) => r !== race) : [...comp.races, race]
     onPatch({ races: next })
-  }
-
-  function addCard(field: 'coreCards' | 'trinkets', cardId: string) {
-    if (comp[field].includes(cardId)) return
-    onPatch({ [field]: [...comp[field], cardId] })
-  }
-
-  function removeCard(field: 'coreCards' | 'trinkets', cardId: string) {
-    onPatch({ [field]: comp[field].filter((id) => id !== cardId) })
   }
 
   function clearSlot(index: number) {
@@ -47,6 +42,10 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
     const next = [...comp.finalBoard]
     next[index] = cardId
     onPatch({ finalBoard: next })
+  }
+
+  function handleScenariosChange(scenarios: BoardNote[]) {
+    onPatch({ scenarios })
   }
 
   return (
@@ -64,6 +63,12 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
           )}
           <Link to={`/comp/${comp.id}`} className="text-lg font-semibold hover:underline">
             {comp.name}
+          </Link>
+          <Link
+            to={`/comp/${comp.id}`}
+            className="rounded bg-white/10 px-2 py-0.5 text-xs text-gray-300 hover:bg-white/20"
+          >
+            자세히 보기
           </Link>
         </div>
         {editable && (
@@ -94,20 +99,6 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
       </div>
 
       <div>
-        <h4 className="mb-1 text-xs font-semibold text-gray-400">핵심 기물</h4>
-        <CardListZone
-          zoneId={`comp:${comp.id}:core`}
-          cardIds={comp.coreCards}
-          cardsById={cardsById}
-          editable={editable}
-          onAdd={(id) => addCard('coreCards', id)}
-          onRemove={(id) => removeCard('coreCards', id)}
-          onCardClick={onCardClick}
-          emptyLabel="라이브러리에서 드래그하거나 검색으로 추가하세요."
-        />
-      </div>
-
-      <div>
         <h4 className="mb-1 text-xs font-semibold text-gray-400">최종 조합</h4>
         <FinalBoardSlots
           zonePrefix={`comp:${comp.id}`}
@@ -118,25 +109,32 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
           onSet={setSlot}
           onCardClick={onCardClick}
         />
+        <div className="mt-2">
+          <MarkdownEditor
+            value={finalBoardNotes.value}
+            status={finalBoardNotes.status}
+            onChange={finalBoardNotes.handleChange}
+            readOnly={!editable}
+            placeholder="이 조합에 대한 메모를 남겨보세요 (마크다운)"
+          />
+        </div>
       </div>
 
       <div>
-        <h4 className="mb-1 text-xs font-semibold text-gray-400">추천 장신구</h4>
-        <CardListZone
-          zoneId={`comp:${comp.id}:trinket`}
-          cardIds={comp.trinkets}
+        <h4 className="mb-1 text-xs font-semibold text-gray-400">각 보는 방법</h4>
+        <BoardNoteList
+          zoneKind="scenario"
+          compId={comp.id}
+          items={comp.scenarios}
           cardsById={cardsById}
           editable={editable}
-          onAdd={(id) => addCard('trinkets', id)}
-          onRemove={(id) => removeCard('trinkets', id)}
+          notesPlaceholder="어떤 상황에 이 덱을 가면 좋은지 적어보세요 (마크다운)"
+          emptyLabel="아직 없습니다."
+          addLabel="+ 추가"
+          onChange={handleScenariosChange}
           onCardClick={onCardClick}
-          emptyLabel="라이브러리에서 드래그하거나 검색으로 추가하세요."
         />
       </div>
-
-      <Link to={`/comp/${comp.id}`} className="inline-block text-xs text-blue-400 hover:underline">
-        빌드업 {comp.buildups.length}개 · 자세히 보기 →
-      </Link>
     </div>
   )
 }

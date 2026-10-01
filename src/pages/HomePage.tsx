@@ -22,7 +22,7 @@ export default function HomePage() {
 
     if (activeId.startsWith('compcard:')) {
       compBoardRef.current?.handleReorder(event)
-    } else if (overId.startsWith('comp:')) {
+    } else if (overId.startsWith('comp:') || overId.startsWith('scenario:')) {
       compBoardRef.current?.handleDropCard(event)
     } else {
       libraryRef.current?.handleDragEnd(event)
