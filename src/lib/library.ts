@@ -78,6 +78,9 @@ export async function fetchLibraryCards(): Promise<LibraryCard[]> {
 
   const customCards: LibraryCard[] = (customRes.data as CustomCardRow[]).map((row) => {
     const override = overrides.get(row.id)
+    const imageUrl = override?.imagePath
+      ? customCardImageUrl(override.imagePath)
+      : customCardImageUrl(row.image_path)
     return {
       id: row.id,
       name: row.name,
@@ -87,11 +90,11 @@ export async function fetchLibraryCards(): Promise<LibraryCard[]> {
       race: row.race,
       races: row.race ? [row.race] : [],
       cost: null,
-      text: null,
+      text: override?.cardText ?? null,
       attack: override?.attack ?? null,
       health: override?.health ?? null,
-      tileUrl: customCardImageUrl(row.image_path) ?? '',
-      renderUrl: customCardImageUrl(row.image_path) ?? '',
+      tileUrl: imageUrl ?? '',
+      renderUrl: imageUrl ?? '',
       isCustom: true,
     }
   })
