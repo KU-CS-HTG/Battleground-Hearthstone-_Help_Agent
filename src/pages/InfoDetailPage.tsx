@@ -1,5 +1,5 @@
 import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import BackToHomeLink from '../components/BackToHomeLink'
@@ -245,8 +245,8 @@ export default function InfoDetailPage() {
         <section>
           <h3 className="mb-1 text-sm font-semibold text-gray-300">이미지</h3>
           {isLoggedIn && <ImageUploadZone onFiles={handleFiles} />}
-          <SortableContext items={images.map((i) => `img:${i.id}`)} strategy={rectSortingStrategy}>
-            <div className="mt-2 flex flex-wrap gap-2">
+          <SortableContext items={images.map((i) => `img:${i.id}`)} strategy={verticalListSortingStrategy}>
+            <div className="mt-2 flex flex-col gap-4">
               {images.map((image) => (
                 <ImageTile
                   key={image.id}

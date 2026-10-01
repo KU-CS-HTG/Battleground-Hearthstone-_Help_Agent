@@ -33,7 +33,7 @@ export default function ImageUploadZone({ onFiles }: { onFiles: (files: File[]) 
         isOver ? 'border-blue-400 bg-blue-400/5' : 'border-white/20'
       }`}
     >
-      <p>이미지를 여기로 드래그하거나, 클릭해서 붙여넣기(Ctrl+V) 하세요.</p>
+      <p>이미지를 여기로 드래그하거나, 클릭해서 붙여넣기(Ctrl+V) 하세요. (여러 개 추가 가능)</p>
       <button
         onClick={() => inputRef.current?.click()}
         className="mt-2 rounded bg-white/10 px-3 py-1 hover:bg-white/20"
