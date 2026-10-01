@@ -16,6 +16,8 @@ export interface InfoPostImage {
   postId: string
   storagePath: string
   caption: string
+  width: number | null
+  height: number | null
   orderIndex: number
 }
 
@@ -104,40 +106,57 @@ export async function reorderPosts(order: { id: string; orderIndex: number }[]) 
   if (failed?.error) throw failed.error
 }
 
+const IMAGE_COLUMNS = 'id,post_id,storage_path,caption,width,height,order_index'
+
+interface ImageRow {
+  id: string
+  post_id: string
+  storage_path: string
+  caption: string | null
+  width: number | null
+  height: number | null
+  order_index: number
+}
+
+function fromImageRow(row: ImageRow): InfoPostImage {
+  return {
+    id: row.id,
+    postId: row.post_id,
+    storagePath: row.storage_path,
+    caption: row.caption ?? '',
+    width: row.width,
+    height: row.height,
+    orderIndex: row.order_index,
+  }
+}
+
 export async function fetchImages(postId: string): Promise<InfoPostImage[]> {
   const { data, error } = await supabase
     .from('info_post_images')
-    .select('id,post_id,storage_path,caption,order_index')
+    .select(IMAGE_COLUMNS)
     .eq('post_id', postId)
     .order('order_index')
   if (error) throw error
-  return data.map((r) => ({
-    id: r.id,
-    postId: r.post_id,
-    storagePath: r.storage_path,
-    caption: r.caption ?? '',
-    orderIndex: r.order_index,
-  }))
+  return (data as ImageRow[]).map(fromImageRow)
 }
 
 export async function addImage(postId: string, storagePath: string, orderIndex: number): Promise<InfoPostImage> {
   const { data, error } = await supabase
     .from('info_post_images')
     .insert({ post_id: postId, storage_path: storagePath, caption: '', order_index: orderIndex })
-    .select('id,post_id,storage_path,caption,order_index')
+    .select(IMAGE_COLUMNS)
     .single()
   if (error) throw error
-  return {
-    id: data.id,
-    postId: data.post_id,
-    storagePath: data.storage_path,
-    caption: data.caption ?? '',
-    orderIndex: data.order_index,
-  }
+  return fromImageRow(data as ImageRow)
 }
 
 export async function updateImageCaption(id: string, caption: string) {
   const { error } = await supabase.from('info_post_images').update({ caption }).eq('id', id)
+  if (error) throw error
+}
+
+export async function updateImageSize(id: string, width: number, height: number) {
+  const { error } = await supabase.from('info_post_images').update({ width, height }).eq('id', id)
   if (error) throw error
 }
 
