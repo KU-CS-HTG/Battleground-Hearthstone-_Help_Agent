@@ -25,7 +25,7 @@ export default function CompCard({ comp, cardsById, editable, onPatch, onDelete,
     id: `compcard:${comp.id}`,
     disabled: !editable,
   })
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
 
   const finalBoardNotes = useAutosaveText(comp.finalBoardNotesMd, async (next) => onPatch({ finalBoardNotesMd: next }))
 
